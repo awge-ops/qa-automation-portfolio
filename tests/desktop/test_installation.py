@@ -39,7 +39,7 @@ class TestSilentInstallation:
     def test_post_install_files_exist(self):
         """Key application files should be present after installation."""
         required_files = [
-            Path(config.APP_PATH) / "ATPdigital.exe",
+            Path(config.APP_PATH) / "AppUnderTest.exe",
             Path(config.DEFAULT_DB_PATH),
         ]
         for path in required_files:
@@ -50,7 +50,7 @@ class TestSilentInstallation:
 class TestPostInstallConfig:
     """Service configuration after installation."""
 
-    SERVICE_NAME = "ATPdigitalQueue"
+    SERVICE_NAME = "AppUnderTestQueue"
 
     def test_stop_service(self, windows_client):
         """Application service should stop without error."""
