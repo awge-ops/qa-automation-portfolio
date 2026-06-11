@@ -1,0 +1,20 @@
+[new_student]
+name = Test Student
+email = test@example.com
+password = test_password
+account_number = 12345
+licence_key = ABCD-EFGH-IJKL-MNOP
+
+[health_check]
+name = Health Check
+email = healthcheck@example.com
+password = hc_password
+account_number = 99999
+licence_key = ZZZZ-YYYY-XXXX-WWWW
+
+[edit_student]
+name = Edit Test
+email = edit@example.com
+password = edit_password
+account_number = 11111
+licence_key = AAAA-BBBB-CCCC-DDDD

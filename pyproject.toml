@@ -1,0 +1,25 @@
+[project]
+name = "qa-automation-portfolio"
+version = "1.0.0"
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "smoke: Full end-to-end smoke test",
+    "ui: Browser-based UI tests",
+    "api: API endpoint verification tests",
+    "database: SQLite schema and data tests",
+    "desktop: Native Windows desktop tests",
+    "admin: Admin portal tests",
+    "slow: Tests that take more than 60 seconds",
+]
+addopts = [
+    "--strict-markers",
+    "-v",
+    "--tb=short",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"

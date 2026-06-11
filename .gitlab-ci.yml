@@ -1,0 +1,139 @@
+spec:
+  inputs:
+    vm_group:
+      type: string
+      options: [all, win10, win11, fast, slow]
+      default: all
+    parallel:
+      type: number
+      default: 12
+---
+
+stages:
+  - prepare
+  - test
+  - upload
+  - report
+  - stop
+
+workflow:
+  rules:
+    - if: $PIPELINE_TYPE == "weekly_update"
+      variables:
+        ACTIVE_PIPELINE: "update"
+    - if: $CI_COMMIT_BRANCH == "main"
+      variables:
+        ACTIVE_PIPELINE: "test"
+    - if: $CI_PIPELINE_SOURCE == "web"
+      variables:
+        ACTIVE_PIPELINE: "test"
+
+# ── TEST PIPELINE ────────────────────────────────────────────────────────────
+
+prepare_job:
+  stage: prepare
+  resource_group: pipeline
+  tags: [controller]
+  rules:
+    - if: $ACTIVE_PIPELINE == "test"
+  script:
+    - ./infrastructure/pipeline/scripts/resetvms.sh "$[[ inputs.vm_group ]]"
+
+report_cleanup_job:
+  stage: prepare
+  resource_group: pipeline
+  tags: [allure]
+  rules:
+    - if: $ACTIVE_PIPELINE == "test"
+  script:
+    - rm -rf /opt/allure/results/*
+
+test_job:
+  stage: test
+  needs: [prepare_job]
+  tags: ["$[[ inputs.vm_group ]]"]
+  parallel: $[[ inputs.parallel ]]
+  variables:
+    PLAYWRIGHT_BROWSERS_PATH: 'C:\playwright-browsers'
+  rules:
+    - if: $ACTIVE_PIPELINE == "test"
+  before_script:
+    - powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\infrastructure\pipeline\scripts\create_env.ps1"
+    - py -m playwright install chromium
+    - py -m pip install -r requirements.txt
+  script:
+    - net use \\$SMB_HOST\testresults\latest $env:SMB_PASSWORD /user:testshare /persistent:no
+    - py scripts/setup_app.py
+    - py -m pytest tests/ --alluredir=$env:EXPORT_PATH -v --tb=short
+
+upload_job:
+  stage: upload
+  resource_group: pipeline
+  tags: [controller]
+  rules:
+    - if: $ACTIVE_PIPELINE == "test"
+      when: always
+  script:
+    - rsync -av /srv/samba/testresults/latest/ runner@reports.example.com:/opt/allure/results/
+    - mv /srv/samba/testresults/latest "/srv/samba/testresults/$(date +'%Y-%m-%d_%H-%M-%S')"
+    - find /srv/samba/testresults -mindepth 1 -maxdepth 1 -type d -mtime +30 -exec rm -rf {} \;
+    - mkdir /srv/samba/testresults/latest
+
+generate_report_job:
+  stage: report
+  resource_group: pipeline
+  tags: [allure]
+  rules:
+    - if: $ACTIVE_PIPELINE == "test"
+      when: always
+  script:
+    - allure generate /opt/allure/results -o /tmp/allure-report --clean
+    - sudo rsync -a --delete --chmod=D755,F644 /tmp/allure-report/ /var/www/allure/
+
+reset_job:
+  stage: stop
+  resource_group: pipeline
+  tags: [controller]
+  rules:
+    - if: $ACTIVE_PIPELINE == "test"
+      when: always
+  script:
+    - ./infrastructure/pipeline/scripts/stopvms.sh "$[[ inputs.vm_group ]]"
+
+# ── WEEKLY UPDATE PIPELINE ───────────────────────────────────────────────────
+
+weekly_update_prepare_job:
+  stage: prepare
+  resource_group: pipeline
+  tags: [controller]
+  rules:
+    - if: $ACTIVE_PIPELINE == "update"
+  script:
+    - ./infrastructure/pipeline/scripts/resetvms.sh utd
+
+weekly_update_job:
+  stage: test
+  tags: [utd]
+  parallel: 12
+  rules:
+    - if: $ACTIVE_PIPELINE == "update"
+  script:
+    - powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\infrastructure\pipeline\scripts\windowsupdates.ps1"
+
+weekly_update_snapshot_job:
+  stage: test
+  tags: [controller]
+  rules:
+    - if: $ACTIVE_PIPELINE == "update"
+  script:
+    - ./infrastructure/pipeline/scripts/snapshotvms.sh
+
+weekly_update_stop_job:
+  stage: stop
+  resource_group: pipeline
+  tags: [controller]
+  rules:
+    - if: $ACTIVE_PIPELINE == "update"
+      when: always
+  script:
+    - ./infrastructure/pipeline/scripts/stopvms.sh utd

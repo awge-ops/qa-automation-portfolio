@@ -1,0 +1,27 @@
+[question_1]
+reference = 100001
+question_text = What is the minimum flight visibility for VFR flight in Class G airspace?
+correct_answer = 1500m
+
+[question_2]
+reference = 100002
+question_text = The International Standard Atmosphere assumes a temperature of:
+correct_answer = 15 degrees C at sea level
+
+[multi_select]
+id = 5001
+reference = 200001
+question_text = Which of the following are primary flight instruments?
+correct_answer = Altimeter|Airspeed Indicator
+
+[question_annex]
+id = 5002
+reference = 200002
+question_text = Refer to the chart. What is the magnetic track from A to B?
+correct_answer = 045
+
+[answer_image]
+id = 5003
+reference = 200003
+question_text = Which symbol represents a VOR on an aeronautical chart?
+correct_answer = 2
